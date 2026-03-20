@@ -34,6 +34,8 @@ interface Photo {
 
 interface Inspection {
   id: string;
+  createdByUsername: string | null;
+  createdByName: string | null;
   vehicleMake: string;
   vehicleModel: string;
   vehicleColor: string;
@@ -629,6 +631,7 @@ function ValidationsSection({ inspections }: { inspections: Inspection[] }) {
               <thead>
                 <tr className="border-b border-zinc-100 bg-zinc-50/50">
                   <th className="text-left px-5 py-3 font-bold text-zinc-500 text-[11px] uppercase tracking-wider">ID</th>
+                  <th className="text-left px-5 py-3 font-bold text-zinc-500 text-[11px] uppercase tracking-wider">Usuario</th>
                   <th className="text-left px-5 py-3 font-bold text-zinc-500 text-[11px] uppercase tracking-wider">Vehículo</th>
                   <th className="text-left px-5 py-3 font-bold text-zinc-500 text-[11px] uppercase tracking-wider">Placa</th>
                   <th className="text-left px-5 py-3 font-bold text-zinc-500 text-[11px] uppercase tracking-wider">Estado</th>
@@ -645,6 +648,21 @@ function ValidationsSection({ inspections }: { inspections: Inspection[] }) {
                   return (
                     <tr key={insp.id} className="border-b border-zinc-50 hover:bg-zinc-50/50 transition-colors cursor-pointer" onClick={() => setSelected(insp)}>
                       <td className="px-5 py-4 font-mono text-xs text-zinc-400">{insp.id.slice(0, 8).toUpperCase()}</td>
+                      <td className="px-5 py-4">
+                        {insp.createdByName ? (
+                          <div className="flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-full bg-zinc-200 flex items-center justify-center flex-shrink-0">
+                              <span className="text-[10px] font-bold text-zinc-600 uppercase">{insp.createdByName.charAt(0)}</span>
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-zinc-700 leading-none">{insp.createdByName}</p>
+                              <p className="text-[10px] text-zinc-400">@{insp.createdByUsername}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-zinc-300">—</span>
+                        )}
+                      </td>
                       <td className="px-5 py-4">
                         <p className="font-bold text-zinc-800">{insp.vehicleMake} {insp.vehicleModel}</p>
                         <p className="text-[11px] text-zinc-400">{insp.vehicleYear || ""} • {insp.vehicleColor}</p>

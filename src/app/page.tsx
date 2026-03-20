@@ -49,6 +49,8 @@ export default function HomePage() {
           vehicle_color: data.color,
           vehicle_year: data.year || undefined,
           vehicle_plate: data.plate || undefined,
+          created_by_username: user?.username,
+          created_by_name: user?.displayName,
         }),
       });
 

@@ -34,6 +34,8 @@ export const angleTypeEnum = pgEnum("angle_type", [
 export const inspections = pgTable("inspections", {
   id: uuid("id").defaultRandom().primaryKey(),
   sessionToken: varchar("session_token", { length: 512 }).notNull(),
+  createdByUsername: varchar("created_by_username", { length: 50 }),
+  createdByName: varchar("created_by_name", { length: 100 }),
   vehicleMake: varchar("vehicle_make", { length: 100 }).notNull(),
   vehicleModel: varchar("vehicle_model", { length: 100 }).notNull(),
   vehicleColor: varchar("vehicle_color", { length: 50 }).notNull(),

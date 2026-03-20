@@ -13,6 +13,8 @@ const createInspectionSchema = z.object({
   vehicle_vin: z.string().max(17).optional(),
   vehicle_year: z.number().int().optional(),
   url_ttl_hours: z.number().int().min(1).max(720).optional().default(72),
+  created_by_username: z.string().optional(),
+  created_by_name: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -56,6 +58,8 @@ export async function POST(request: NextRequest) {
     .insert(inspections)
     .values({
       sessionToken,
+      createdByUsername: body.created_by_username || null,
+      createdByName: body.created_by_name || null,
       vehicleMake: body.vehicle_make,
       vehicleModel: body.vehicle_model,
       vehicleColor: body.vehicle_color,
