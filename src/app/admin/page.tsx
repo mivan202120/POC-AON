@@ -72,12 +72,32 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; 
   PROCESSING: { label: "En proceso", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: "sync" },
 };
 
+const ANGLE_LABELS: Record<string, string> = {
+  FRONTAL: "Frontal", REAR: "Trasera", LEFT: "Lateral Izq.", RIGHT: "Lateral Der.",
+  DASHBOARD: "Tablero", VIN: "VIN",
+};
+
+function getGreeting(): string {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 19) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 function formatShortDate(d: string) {
   return new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function isValidImageUrl(url: string): boolean {
+  if (!url) return false;
+  if (url.startsWith("/local/")) return false;
+  if (url.startsWith("data:image/")) return true;
+  if (url.startsWith("http")) return true;
+  return false;
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -259,8 +279,11 @@ function DashboardSection({ stats, inspections, users }: { stats: Stats | null; 
     <div className="space-y-8 max-w-7xl">
       {/* Welcome */}
       <div>
-        <h2 className="text-2xl font-bold text-zinc-800 tracking-tight">Bienvenido, Administrador</h2>
-        <p className="text-sm text-zinc-500 mt-1">Resumen del sistema de inspección vehicular AON</p>
+        <h2 className="text-2xl font-bold text-zinc-800 tracking-tight">{getGreeting()}, Administrador</h2>
+        <p className="text-sm text-zinc-500 mt-1">
+          {new Date().toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
+          {" · "} Resumen del sistema de inspección vehicular AON
+        </p>
       </div>
 
       {/* Stat Cards */}
@@ -279,24 +302,31 @@ function DashboardSection({ stats, inspections, users }: { stats: Stats | null; 
       </div>
 
       {/* Approval Rate Bar */}
-      {stats.total > 0 && (
-        <div className="bg-white rounded-2xl border border-zinc-200 p-6">
-          <h3 className="text-sm font-bold text-zinc-700 mb-4">Tasa de Aprobación</h3>
-          <div className="flex items-center gap-4">
-            <div className="flex-1 h-4 bg-zinc-100 rounded-full overflow-hidden flex">
-              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${(stats.approved / stats.total) * 100}%` }} />
-              <div className="h-full bg-red-500 transition-all" style={{ width: `${(stats.rejected / stats.total) * 100}%` }} />
-              <div className="h-full bg-amber-400 transition-all" style={{ width: `${((stats.pending + stats.processing) / stats.total) * 100}%` }} />
+      {stats.total > 0 && (() => {
+        const approvedPct = ((stats.approved / stats.total) * 100).toFixed(0);
+        const rejectedPct = ((stats.rejected / stats.total) * 100).toFixed(0);
+        const pendingPct = (((stats.pending + stats.processing) / stats.total) * 100).toFixed(0);
+        return (
+          <div className="bg-white rounded-2xl border border-zinc-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-bold text-zinc-700">Distribución de Resultados</h3>
+              <span className="text-xs text-zinc-400">{stats.total} inspecciones totales</span>
             </div>
-            <span className="text-2xl font-bold text-emerald-600">{stats.total > 0 ? ((stats.approved / stats.total) * 100).toFixed(0) : 0}%</span>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 h-5 bg-zinc-100 rounded-full overflow-hidden flex">
+                {stats.approved > 0 && <div className="h-full bg-emerald-500 transition-all flex items-center justify-center" style={{ width: `${approvedPct}%` }}><span className="text-[9px] font-bold text-white drop-shadow">{approvedPct}%</span></div>}
+                {stats.rejected > 0 && <div className="h-full bg-red-500 transition-all flex items-center justify-center" style={{ width: `${rejectedPct}%` }}><span className="text-[9px] font-bold text-white drop-shadow">{rejectedPct}%</span></div>}
+                {(stats.pending + stats.processing) > 0 && <div className="h-full bg-amber-400 transition-all flex items-center justify-center" style={{ width: `${pendingPct}%` }}><span className="text-[9px] font-bold text-white drop-shadow">{pendingPct}%</span></div>}
+              </div>
+            </div>
+            <div className="flex gap-6 mt-3">
+              <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Aprobados ({stats.approved})</span>
+              <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />Rechazados ({stats.rejected})</span>
+              <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" />Pendientes ({stats.pending + stats.processing})</span>
+            </div>
           </div>
-          <div className="flex gap-6 mt-3">
-            <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Aprobados</span>
-            <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-red-500" />Rechazados</span>
-            <span className="flex items-center gap-1.5 text-xs text-zinc-500"><span className="w-2.5 h-2.5 rounded-full bg-amber-400" />Pendientes</span>
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Recent Inspections */}
       <div className="bg-white rounded-2xl border border-zinc-200 overflow-hidden">
@@ -721,6 +751,19 @@ function ValidationDetailModal({ inspection, onClose }: { inspection: Inspection
         </div>
 
         <div className="p-6 space-y-8 max-h-[80vh] overflow-y-auto">
+          {/* User Attribution */}
+          {inspection.createdByName && (
+            <div className="flex items-center gap-3 bg-gradient-to-r from-zinc-50 to-transparent rounded-xl px-4 py-3 border border-zinc-200/50">
+              <div className="w-9 h-9 rounded-full bg-zinc-700 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-sm font-bold uppercase">{inspection.createdByName.charAt(0)}</span>
+              </div>
+              <div>
+                <p className="text-sm font-bold text-zinc-800">{inspection.createdByName}</p>
+                <p className="text-[11px] text-zinc-400">@{inspection.createdByUsername} · Realizó esta inspección</p>
+              </div>
+            </div>
+          )}
+
           {/* Info Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <InfoCell label="Marca" value={inspection.vehicleMake} icon="precision_manufacturing" />
@@ -771,30 +814,47 @@ function ValidationDetailModal({ inspection, onClose }: { inspection: Inspection
             </p>
             {inspection.photos.length > 0 ? (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {inspection.photos.map((photo) => (
-                  <div key={photo.id} className="bg-zinc-100 rounded-xl overflow-hidden border border-zinc-200">
-                    <div className="aspect-[4/3] relative">
-                      <img src={photo.blobUrl} alt={photo.angleType} className="w-full h-full object-cover" />
-                      <div className="absolute top-2 left-2">
-                        <span className="bg-black/60 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase">{photo.angleType}</span>
-                      </div>
-                      {photo.aiAngleCorrect !== null && (
-                        <div className="absolute top-2 right-2">
-                          <span className={`material-symbols-outlined text-lg ${photo.aiAngleCorrect ? "text-emerald-400" : "text-red-400"}`} style={{ fontVariationSettings: "'FILL' 1" }}>
-                            {photo.aiAngleCorrect ? "check_circle" : "cancel"}
-                          </span>
+                {inspection.photos.map((photo) => {
+                  const hasImage = isValidImageUrl(photo.blobUrl);
+                  return (
+                    <div key={photo.id} className="bg-zinc-100 rounded-xl overflow-hidden border border-zinc-200">
+                      <div className="aspect-[4/3] relative">
+                        {hasImage ? (
+                          <img src={photo.blobUrl} alt={photo.angleType} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-200/50">
+                            <span className="material-symbols-outlined text-zinc-300 text-4xl">image_not_supported</span>
+                            <span className="text-[10px] text-zinc-400 mt-1">Imagen no disponible</span>
+                          </div>
+                        )}
+                        <div className="absolute top-2 left-2">
+                          <span className="bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md">{ANGLE_LABELS[photo.angleType] || photo.angleType}</span>
                         </div>
-                      )}
-                    </div>
-                    <div className="p-3 space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                        <span>{photo.widthPx}×{photo.heightPx}</span>
-                        <span>{(photo.fileSizeBytes / 1024).toFixed(0)} KB</span>
+                        {photo.aiAngleCorrect !== null && (
+                          <div className="absolute top-2 right-2">
+                            <span className={`material-symbols-outlined text-lg drop-shadow ${photo.aiAngleCorrect ? "text-emerald-400" : "text-red-400"}`} style={{ fontVariationSettings: "'FILL' 1" }}>
+                              {photo.aiAngleCorrect ? "check_circle" : "cancel"}
+                            </span>
+                          </div>
+                        )}
+                        {photo.aiVehiclePresent !== null && (
+                          <div className="absolute bottom-2 left-2">
+                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${photo.aiVehiclePresent ? "bg-emerald-500/90 text-white" : "bg-red-500/90 text-white"}`}>
+                              {photo.aiVehiclePresent ? "✓ Vehículo detectado" : "✗ Sin vehículo"}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                      {photo.aiObservations && <p className="text-[11px] text-zinc-500 leading-relaxed italic">{photo.aiObservations}</p>}
+                      <div className="p-3 space-y-1.5">
+                        <div className="flex items-center justify-between text-[10px] text-zinc-500">
+                          <span>{photo.widthPx}×{photo.heightPx}</span>
+                          <span>{(photo.fileSizeBytes / 1024).toFixed(0)} KB</span>
+                        </div>
+                        {photo.aiObservations && <p className="text-[11px] text-zinc-500 leading-relaxed">{photo.aiObservations}</p>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="bg-zinc-50 rounded-xl p-8 text-center border border-zinc-200">
