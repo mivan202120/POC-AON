@@ -77,9 +77,26 @@ export const inspectionPhotos = pgTable("inspection_photos", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ── Table: platform_users ──────────────────────────────────────────────────────
+
+export const userRoleEnum = pgEnum("user_role", ["admin", "user"]);
+
+export const platformUsers = pgTable("platform_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  username: varchar("username", { length: 50 }).notNull().unique(),
+  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  role: userRoleEnum("role").notNull().default("user"),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 export type Inspection = typeof inspections.$inferSelect;
 export type NewInspection = typeof inspections.$inferInsert;
 export type InspectionPhoto = typeof inspectionPhotos.$inferSelect;
 export type NewInspectionPhoto = typeof inspectionPhotos.$inferInsert;
+export type PlatformUser = typeof platformUsers.$inferSelect;
+export type NewPlatformUser = typeof platformUsers.$inferInsert;
