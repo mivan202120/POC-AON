@@ -1,13 +1,56 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth-context";
 import AonLogo from "@/components/AonLogo";
 
 export default function HomePage() {
+  const { user, isLoading, logout } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.push("/login");
+    }
+  }, [user, isLoading, router]);
+
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center bg-[var(--surface)]">
+        <AonLogo height={32} className="animate-pulse" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh flex flex-col bg-[var(--surface)]">
-      {/* Premium Header */}
+      {/* Header with user info */}
       <header className="w-full glass-header border-b border-zinc-200/30 px-6 py-4">
         <div className="max-w-md mx-auto flex items-center justify-between">
           <AonLogo height={28} />
-          <span className="label-industrial text-zinc-400">Inspección Digital</span>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[var(--primary)] flex items-center justify-center">
+                <span className="text-white text-xs font-bold uppercase">
+                  {user.displayName.charAt(0)}
+                </span>
+              </div>
+              <div className="hidden sm:block">
+                <p className="text-xs font-bold text-[var(--on-surface)] leading-none">{user.displayName}</p>
+                <p className="text-[10px] text-zinc-400 uppercase tracking-wider">{user.role}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="p-2 rounded-lg hover:bg-zinc-100 transition-colors group"
+              title="Cerrar sesión"
+            >
+              <span className="material-symbols-outlined text-zinc-400 group-hover:text-[var(--primary)] transition-colors text-xl">
+                logout
+              </span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -24,6 +67,22 @@ export default function HomePage() {
             </h1>
             <p className="text-[var(--secondary)] font-medium text-lg max-w-xs mx-auto">
               Inspección vehicular inteligente impulsada por IA
+            </p>
+          </div>
+
+          {/* Welcome Card */}
+          <div className="bg-[var(--surface-container-lowest)] rounded-2xl p-6 card-ambient text-left">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-[var(--primary)]/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[var(--primary)] text-2xl">waving_hand</span>
+              </div>
+              <div>
+                <p className="label-industrial text-zinc-400">Bienvenido</p>
+                <p className="text-lg font-bold text-[var(--on-surface)]">{user.displayName}</p>
+              </div>
+            </div>
+            <p className="text-sm text-[var(--secondary)] leading-relaxed">
+              Desde aquí puedes administrar las inspecciones vehiculares y monitorear los resultados del sistema de IA.
             </p>
           </div>
 
