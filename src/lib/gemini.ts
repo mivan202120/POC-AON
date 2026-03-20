@@ -1,6 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
+// ── AI Validation via OpenRouter (Gemini 2.5 Flash) ────────────────────────────
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
+const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -84,90 +84,123 @@ REGLAS DE DECISIÓN:
 Para la comparación de marca y modelo, usa fuzzy matching (ej: "Corolla" = "corolla" = "COROLLA", "Toyota" incluye "TOYOTA MOTOR").
 Para color, acepta variaciones similares (ej: "blanco" ≈ "blanco perla" ≈ "white").
 
-IMPORTANTE: Responde ÚNICAMENTE con un JSON válido siguiendo el schema exacto. No incluyas texto adicional.`;
+IMPORTANTE: Responde ÚNICAMENTE con un JSON válido siguiendo este schema exacto, sin texto adicional ni markdown:
+{
+  "inspection_result": "APPROVED" | "REJECTED",
+  "confidence_score": 0.0-1.0,
+  "vehicle_detected": { "make": "", "model": "", "color": "", "year_estimate": "", "body_type": "" },
+  "declared_data_match": { "make_match": boolean, "model_match": boolean, "color_match": boolean },
+  "photos_validation": [{ "photo_index": 1-6, "expected_angle": "", "angle_correct": boolean, "vehicle_present": boolean, "quality_acceptable": boolean, "observations": "" }],
+  "odometer_reading": "string | null",
+  "vin_extracted": "string | null",
+  "vin_format_valid": boolean,
+  "rejection_reasons": ["string"],
+  "recommendations": ["string"]
+}`;
 }
 
-// ── Validate with Gemini ───────────────────────────────────────────────────────
+// ── Validate with OpenRouter (Gemini 2.5 Flash) ───────────────────────────────
 
 export async function validateInspection(
   vehicleData: VehicleData,
   photoBuffers: { buffer: Buffer; mimeType: string }[]
 ): Promise<{ result: InspectionResult; latencyMs: number }> {
   const startTime = Date.now();
-
   const systemPrompt = buildSystemPrompt(vehicleData);
 
-  // Build the content with images
-  const parts: Array<{ inlineData: { data: string; mimeType: string } } | { text: string }> = [];
-
-  // Add instruction text
-  parts.push({
-    text: "Analiza las siguientes 6 fotografías del vehículo y retorna el resultado de validación en formato JSON.",
-  });
-
-  // Add each photo as inline data
+  // Build content parts with images for OpenRouter vision API
   const angleLabels = ["FRONTAL", "TRASERA", "LATERAL_IZQUIERDO", "LATERAL_DERECHO", "TABLERO", "VIN"];
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const contentParts: any[] = [
+    {
+      type: "text",
+      text: "Analiza las siguientes 6 fotografías del vehículo y retorna el resultado de validación en formato JSON.",
+    },
+  ];
+
   for (let i = 0; i < photoBuffers.length; i++) {
-    parts.push({
+    contentParts.push({
+      type: "text",
       text: `Foto ${i + 1} — ${angleLabels[i]}:`,
     });
-    parts.push({
-      inlineData: {
-        data: photoBuffers[i].buffer.toString("base64"),
-        mimeType: photoBuffers[i].mimeType || "image/jpeg",
+    contentParts.push({
+      type: "image_url",
+      image_url: {
+        url: `data:${photoBuffers[i].mimeType};base64,${photoBuffers[i].buffer.toString("base64")}`,
       },
     });
   }
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash",
-    config: {
-      temperature: 0.1,
-      maxOutputTokens: 2048,
-      responseMimeType: "application/json",
-      systemInstruction: systemPrompt,
+  const response = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      "Content-Type": "application/json",
+      "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+      "X-Title": "AON Vehicle Inspection",
     },
-    contents: [
-      {
-        role: "user",
-        parts,
-      },
-    ],
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash",
+      temperature: 0.1,
+      max_tokens: 2048,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: contentParts },
+      ],
+    }),
   });
 
   const latencyMs = Date.now() - startTime;
 
-  // Parse the JSON response
-  const responseText = response.text || "";
-  let result: InspectionResult;
-
-  try {
-    result = JSON.parse(responseText) as InspectionResult;
-  } catch {
-    // If Gemini returns malformed JSON, create a rejection
-    result = {
-      inspection_result: "REJECTED",
-      confidence_score: 0,
-      vehicle_detected: {
-        make: "unknown",
-        model: "unknown",
-        color: "unknown",
-        year_estimate: "unknown",
-        body_type: "unknown",
-      },
-      declared_data_match: {
-        make_match: false,
-        model_match: false,
-        color_match: false,
-      },
-      photos_validation: [],
-      odometer_reading: null,
-      vin_extracted: null,
-      vin_format_valid: false,
-      rejection_reasons: ["Error al procesar las imágenes. Por favor, intenta de nuevo."],
-      recommendations: ["Asegúrate de que las fotos sean nítidas y estén bien iluminadas."],
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error("OpenRouter error:", response.status, errorBody);
+    return {
+      result: createFallbackResult("Error al conectar con el servicio de IA. Intenta de nuevo."),
+      latencyMs,
     };
   }
 
+  const data = await response.json();
+  const responseText = data.choices?.[0]?.message?.content || "";
+
+  let result: InspectionResult;
+  try {
+    // Clean potential markdown code fences
+    const cleanJson = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    result = JSON.parse(cleanJson) as InspectionResult;
+  } catch {
+    console.error("Failed to parse Gemini response:", responseText.slice(0, 500));
+    result = createFallbackResult("Error al procesar la respuesta de IA. Intenta de nuevo.");
+  }
+
   return { result, latencyMs };
+}
+
+// ── Fallback ───────────────────────────────────────────────────────────────────
+
+function createFallbackResult(reason: string): InspectionResult {
+  return {
+    inspection_result: "REJECTED",
+    confidence_score: 0,
+    vehicle_detected: {
+      make: "unknown",
+      model: "unknown",
+      color: "unknown",
+      year_estimate: "unknown",
+      body_type: "unknown",
+    },
+    declared_data_match: {
+      make_match: false,
+      model_match: false,
+      color_match: false,
+    },
+    photos_validation: [],
+    odometer_reading: null,
+    vin_extracted: null,
+    vin_format_valid: false,
+    rejection_reasons: [reason],
+    recommendations: ["Asegúrate de que las fotos sean nítidas y estén bien iluminadas."],
+  };
 }
