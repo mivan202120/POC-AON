@@ -84,6 +84,10 @@ export default function CaptureFlow({
 
   const startCamera = useCallback(async () => {
     try {
+      // Stop existing stream first
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((t) => t.stop());
+      }
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           facingMode: "environment",
@@ -94,6 +98,7 @@ export default function CaptureFlow({
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        try { await videoRef.current.play(); } catch { /* autoplay handles it */ }
       }
       setCameraPermission(true);
     } catch {
@@ -285,6 +290,7 @@ export default function CaptureFlow({
       {screen === "capture" && (
         <CaptureScreen
           videoRef={videoRef}
+          streamRef={streamRef}
           angle={ANGLES[currentAngle]}
           angleIndex={currentAngle}
           onCapture={capturePhoto}
@@ -413,19 +419,30 @@ function WelcomeScreen({
 
 function CaptureScreen({
   videoRef,
+  streamRef,
   angle,
   angleIndex,
   onCapture,
-  inspectionId,
   locationActive,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  streamRef: React.RefObject<MediaStream | null>;
   angle: (typeof ANGLES)[0];
   angleIndex: number;
   onCapture: () => void;
   inspectionId: string;
   locationActive: boolean;
 }) {
+  // Re-attach stream when this screen mounts or angle changes
+  useEffect(() => {
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (video && stream) {
+      video.srcObject = stream;
+      video.play().catch(() => {});
+    }
+  }, [videoRef, streamRef, angleIndex]);
+
   return (
     <div className="bg-zinc-950 text-white min-h-dvh flex flex-col overflow-hidden">
       <header className="sticky top-0 w-full z-50 glass-header-dark border-b border-white/10">
@@ -459,6 +476,7 @@ function CaptureScreen({
           autoPlay
           playsInline
           muted
+          onLoadedMetadata={(e) => (e.target as HTMLVideoElement).play().catch(() => {})}
           className="absolute inset-0 w-full h-full object-cover"
         />
 
