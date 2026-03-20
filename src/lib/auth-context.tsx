@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const USERS: Record<string, { password: string; displayName: string; role: "admin" | "user" }> = {
   admin: { password: "1234", displayName: "Administrador", role: "admin" },
-  Ivan: { password: "1234", displayName: "Ivan Hernández", role: "user" },
+  ivan: { password: "1234", displayName: "Ivan Hernández", role: "user" },
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);

@@ -18,7 +18,7 @@ export default function LoginPage() {
 
   // Redirect if already logged in
   useEffect(() => {
-    if (user) router.push("/");
+    if (user) router.push(user.role === "admin" ? "/admin" : "/");
   }, [user, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -31,7 +31,9 @@ export default function LoginPage() {
 
     const result = login(username, password);
     if (result.success) {
-      router.push("/");
+      // Read the user data from the login result to determine role
+      const role = username === "admin" ? "admin" : "user";
+      router.push(role === "admin" ? "/admin" : "/");
     } else {
       setError(result.error || "Credenciales inválidas");
       setIsSubmitting(false);
