@@ -42,7 +42,6 @@ export default function HomePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "X-API-Key": "aon-poc-api-key-2026",
         },
         body: JSON.stringify({
           vehicle_make: data.make,
