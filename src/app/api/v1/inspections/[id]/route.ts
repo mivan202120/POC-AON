@@ -141,8 +141,9 @@ export async function POST(
         contentType: "image/jpeg",
       });
     } catch {
-      // If Vercel Blob is not configured, store path reference only
-      blobResult = { url: `/local/${blobPath}`, pathname: blobPath };
+      // If Vercel Blob is not configured, store as base64 data URL
+      const base64 = buffer.toString("base64");
+      blobResult = { url: `data:image/jpeg;base64,${base64}`, pathname: blobPath };
     }
 
     photoBuffers.push({ buffer, mimeType: "image/jpeg" });
