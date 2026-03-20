@@ -2,6 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import AonLogo from "@/components/AonLogo";
+import { SILHOUETTES } from "@/components/VehicleSilhouettes";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -285,6 +286,7 @@ export default function CaptureFlow({
           cameraPermission={cameraPermission}
           locationPermission={locationPermission}
           onStart={startInspection}
+          onRestart={restart}
         />
       )}
       {screen === "capture" && (
@@ -296,6 +298,7 @@ export default function CaptureFlow({
           onCapture={capturePhoto}
           inspectionId={inspectionId}
           locationActive={locationPermission}
+          onRestart={restart}
         />
       )}
       {screen === "review" && (
@@ -304,9 +307,10 @@ export default function CaptureFlow({
           onRetake={retakePhoto}
           onSubmit={submitPhotos}
           error={error}
+          onRestart={restart}
         />
       )}
-      {screen === "processing" && <ProcessingScreen />}
+      {screen === "processing" && <ProcessingScreen onRestart={restart} />}
       {screen === "result" && result && (
         <ResultScreen result={result} onRestart={restart} vehicle={vehicle} />
       )}
@@ -322,22 +326,24 @@ function WelcomeScreen({
   vehicle,
   inspectionId,
   onStart,
+  onRestart,
 }: {
   vehicle: VehicleData;
   inspectionId: string;
   cameraPermission: boolean;
   locationPermission: boolean;
   onStart: () => void;
+  onRestart: () => void;
 }) {
   return (
     <>
       <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 flex items-center justify-between px-6 py-4">
         <AonLogo height={24} />
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           <span className="label-industrial text-zinc-400">ID: {inspectionId.slice(0, 8).toUpperCase()}</span>
-          <div className="h-1.5 w-16 bg-[var(--surface-container)] rounded-full overflow-hidden">
-            <div className="h-full w-1/4 bg-[var(--primary-container)]" />
-          </div>
+          <button onClick={onRestart} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors" title="Salir">
+            <span className="material-symbols-outlined text-zinc-400 text-lg">close</span>
+          </button>
         </div>
       </header>
 
@@ -424,6 +430,7 @@ function CaptureScreen({
   angleIndex,
   onCapture,
   locationActive,
+  onRestart,
 }: {
   videoRef: React.RefObject<HTMLVideoElement | null>;
   streamRef: React.RefObject<MediaStream | null>;
@@ -432,6 +439,7 @@ function CaptureScreen({
   onCapture: () => void;
   inspectionId: string;
   locationActive: boolean;
+  onRestart: () => void;
 }) {
   // Re-attach stream when this screen mounts or angle changes
   useEffect(() => {
@@ -443,24 +451,31 @@ function CaptureScreen({
     }
   }, [videoRef, streamRef, angleIndex]);
 
+  const SilhouetteComponent = SILHOUETTES[angle.key];
+
   return (
     <div className="bg-zinc-950 text-white min-h-dvh flex flex-col overflow-hidden">
       <header className="sticky top-0 w-full z-50 glass-header-dark border-b border-white/10">
         <div className="flex items-center justify-between px-6 py-4">
           <AonLogo height={20} className="brightness-0 invert" />
-          <div className="flex gap-1.5">
-            {ANGLES.map((_, i) => (
-              <div
-                key={i}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  i < angleIndex
-                    ? "bg-red-600"
-                    : i === angleIndex
-                    ? "bg-red-600 ring-4 ring-red-600/20"
-                    : "bg-white/20"
-                }`}
-              />
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1.5">
+              {ANGLES.map((_, i) => (
+                <div
+                  key={i}
+                  className={`w-1.5 h-1.5 rounded-full transition-all ${
+                    i < angleIndex
+                      ? "bg-red-600"
+                      : i === angleIndex
+                      ? "bg-red-600 ring-4 ring-red-600/20"
+                      : "bg-white/20"
+                  }`}
+                />
+              ))}
+            </div>
+            <button onClick={onRestart} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" title="Salir">
+              <span className="material-symbols-outlined text-white/50 text-lg">close</span>
+            </button>
           </div>
         </div>
         <div className="px-6 pb-3">
@@ -481,11 +496,9 @@ function CaptureScreen({
         />
 
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center">
+          {/* Vehicle Silhouette Guide */}
           <div className="relative w-[85%] aspect-[4/3] max-w-md">
-            <div className="corner-guide top-0 left-0 border-t border-l rounded-tl-xl" />
-            <div className="corner-guide top-0 right-0 border-t border-r rounded-tr-xl" />
-            <div className="corner-guide bottom-0 left-0 border-b border-l rounded-bl-xl" />
-            <div className="corner-guide bottom-0 right-0 border-b border-r rounded-br-xl" />
+            {SilhouetteComponent && <SilhouetteComponent />}
           </div>
 
           {locationActive && (
@@ -497,8 +510,9 @@ function CaptureScreen({
         </div>
       </main>
 
-      <section className="bg-zinc-950 px-8 pt-8 pb-10 flex flex-col items-center z-20">
-        <div className="text-center mb-8 max-w-xs">
+      <section className="bg-zinc-950 px-8 pt-6 pb-10 flex flex-col items-center z-20">
+        <div className="text-center mb-3 max-w-xs">
+          <p className="text-white/60 text-xs font-medium mb-1">Alinea el vehículo con la silueta</p>
           <p className="text-white text-sm font-medium leading-relaxed tracking-tight">
             {angle.desc}
           </p>
@@ -527,11 +541,13 @@ function ReviewScreen({
   onRetake,
   onSubmit,
   error,
+  onRestart,
 }: {
   photos: (PhotoData | null)[];
   onRetake: (index: number) => void;
   onSubmit: () => void;
   error: string | null;
+  onRestart: () => void;
 }) {
   const allPhotos = photos.every((p) => p !== null);
 
@@ -543,7 +559,12 @@ function ReviewScreen({
             <h1 className="font-bold text-xl leading-none">Revisa tus fotos</h1>
             <p className="label-industrial text-[var(--secondary)] mt-1">Verificación visual</p>
           </div>
-          <AonLogo height={22} />
+          <div className="flex items-center gap-3">
+            <AonLogo height={22} />
+            <button onClick={onRestart} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors" title="Salir">
+              <span className="material-symbols-outlined text-zinc-400 text-lg">close</span>
+            </button>
+          </div>
         </div>
       </header>
 
@@ -637,7 +658,7 @@ function ReviewScreen({
 // SCREEN 4: Processing
 // ══════════════════════════════════════════════════════════════════════════════
 
-function ProcessingScreen() {
+function ProcessingScreen({ onRestart }: { onRestart: () => void }) {
   const steps = [
     { label: "Fotos recibidas", status: "done" },
     { label: "Verificando vehículo", status: "done" },
@@ -649,7 +670,12 @@ function ProcessingScreen() {
       <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <AonLogo height={22} />
-          <span className="label-industrial text-zinc-400">Inspección en curso</span>
+          <div className="flex items-center gap-3">
+            <span className="label-industrial text-zinc-400">Inspección en curso</span>
+            <button onClick={onRestart} className="p-1.5 rounded-lg hover:bg-zinc-100 transition-colors" title="Cancelar">
+              <span className="material-symbols-outlined text-zinc-400 text-lg">close</span>
+            </button>
+          </div>
         </div>
       </header>
 
