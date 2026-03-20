@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import AonLogo from "@/components/AonLogo";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -324,18 +325,13 @@ function WelcomeScreen({
 }) {
   return (
     <>
-      <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 flex items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[var(--primary)]">analytics</span>
-          <span className="text-lg font-black tracking-tighter text-[var(--primary)] uppercase">
-            {inspectionId.slice(0, 8).toUpperCase()}
-          </span>
-        </div>
+      <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 flex items-center justify-between px-6 py-4">
+        <AonLogo height={24} />
         <div className="flex items-center gap-4">
+          <span className="label-industrial text-zinc-400">ID: {inspectionId.slice(0, 8).toUpperCase()}</span>
           <div className="h-1.5 w-16 bg-[var(--surface-container)] rounded-full overflow-hidden">
             <div className="h-full w-1/4 bg-[var(--primary-container)]" />
           </div>
-          <span className="label-industrial text-zinc-500">PASO 1 DE 4</span>
         </div>
       </header>
 
@@ -434,10 +430,7 @@ function CaptureScreen({
     <div className="bg-zinc-950 text-white min-h-dvh flex flex-col overflow-hidden">
       <header className="sticky top-0 w-full z-50 glass-header-dark border-b border-white/10">
         <div className="flex items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-red-500">analytics</span>
-            <span className="font-semibold tracking-tight">{inspectionId.slice(0, 8).toUpperCase()}</span>
-          </div>
+          <AonLogo height={20} className="brightness-0 invert" />
           <div className="flex gap-1.5">
             {ANGLES.map((_, i) => (
               <div
@@ -532,9 +525,7 @@ function ReviewScreen({
             <h1 className="font-bold text-xl leading-none">Revisa tus fotos</h1>
             <p className="label-industrial text-[var(--secondary)] mt-1">Verificación visual</p>
           </div>
-          <div className="text-[10px] font-black text-[var(--primary)] uppercase tracking-tighter">
-            AON INSPECTION
-          </div>
+          <AonLogo height={22} />
         </div>
       </header>
 
@@ -637,9 +628,9 @@ function ProcessingScreen() {
 
   return (
     <>
-      <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 px-6 py-3">
-        <div className="flex items-center gap-2">
-          <span className="material-symbols-outlined text-[var(--primary)]">analytics</span>
+      <header className="sticky top-0 w-full z-50 glass-header border-b border-zinc-200/50 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <AonLogo height={22} />
           <span className="label-industrial text-zinc-400">Inspección en curso</span>
         </div>
       </header>
@@ -761,20 +752,10 @@ function ResultScreen({
     <>
       <header className="bg-white sticky top-0 w-full z-50 border-b border-slate-100 shadow-sm">
         <div className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="bg-[var(--primary)]/10 p-1.5 rounded-lg">
-              <span
-                className="material-symbols-outlined text-[var(--primary)] text-xl"
-                style={{ fontVariationSettings: "'wght' 700" }}
-              >
-                analytics
-              </span>
-            </div>
-            <span className="text-xs font-bold tracking-tight text-slate-500">
-              ID: {result.inspection_id.slice(0, 8).toUpperCase()}
-            </span>
-          </div>
-          <div className="text-xl font-black tracking-tighter text-[var(--primary)]">AON</div>
+          <AonLogo height={24} />
+          <span className="text-xs font-bold tracking-tight text-slate-500">
+            ID: {result.inspection_id.slice(0, 8).toUpperCase()}
+          </span>
         </div>
       </header>
 
