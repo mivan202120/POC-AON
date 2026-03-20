@@ -39,9 +39,20 @@ export async function verifySessionToken(
 
 // ── API Key Auth ───────────────────────────────────────────────────────────────
 
+const FALLBACK_API_KEY = "aon-poc-api-key-2026";
+
 export function verifyApiKey(request: NextRequest): boolean {
+  // Allow same-origin requests from our own frontend
+  const origin = request.headers.get("origin") || "";
+  const referer = request.headers.get("referer") || "";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  if (origin.startsWith(appUrl) || referer.startsWith(appUrl) || origin.startsWith("http://localhost")) {
+    return true;
+  }
+
+  // External calls must provide a valid API key
   const apiKey = request.headers.get("x-api-key");
-  return apiKey === process.env.AON_API_KEY;
+  return apiKey === (process.env.AON_API_KEY || FALLBACK_API_KEY);
 }
 
 // ── Extract Bearer Token ───────────────────────────────────────────────────────
