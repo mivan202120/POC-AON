@@ -45,11 +45,18 @@ export async function POST(
     );
   }
 
-  if (inspection.status !== "PENDING") {
+  if (inspection.status === "APPROVED" || inspection.status === "PROCESSING") {
     return NextResponse.json(
       { error: `Inspection already ${inspection.status.toLowerCase()}` },
       { status: 409 }
     );
+  }
+
+  // If REJECTED, delete previous photos so they can be re-uploaded
+  if (inspection.status === "REJECTED") {
+    await db
+      .delete(inspectionPhotos)
+      .where(eq(inspectionPhotos.inspectionId, inspectionId));
   }
 
   // Check URL expiration
