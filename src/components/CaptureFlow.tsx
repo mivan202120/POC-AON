@@ -796,6 +796,199 @@ function ResultScreen({
 }) {
   const isApproved = result.status === "APPROVED";
 
+  const generatePDF = useCallback(() => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" });
+    const timeStr = now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+    const shortId = result.inspection_id.slice(0, 8).toUpperCase();
+    const confidencePct = Math.round(result.confidence_score * 100);
+
+    const matchIcon = (ok: boolean) => ok
+      ? `<span style="color:#16a34a;font-weight:700">✓ Coincide</span>`
+      : `<span style="color:#dc2626;font-weight:700">✗ No coincide</span>`;
+
+    const html = `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comprobante de Inspección ${shortId}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',system-ui,sans-serif; background:#fff; color:#1e293b; padding:0; }
+  .page { max-width:680px; margin:0 auto; padding:48px 40px; }
+
+  /* Header */
+  .header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #e11d48; padding-bottom:20px; margin-bottom:32px; }
+  .logo-area h1 { font-size:28px; font-weight:900; letter-spacing:-0.5px; color:#0f172a; }
+  .logo-area p { font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:2px; font-weight:700; margin-top:4px; }
+  .doc-info { text-align:right; }
+  .doc-info .id { font-size:13px; font-family:monospace; color:#64748b; font-weight:600; }
+  .doc-info .date { font-size:12px; color:#94a3b8; margin-top:4px; }
+
+  /* Status Banner */
+  .status-banner { display:flex; align-items:center; gap:16px; padding:20px 24px; border-radius:16px; margin-bottom:28px; }
+  .status-banner.approved { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; }
+  .status-banner.rejected { background:linear-gradient(135deg,#fef2f2,#fee2e2); border:1.5px solid #fca5a5; }
+  .status-icon { width:48px; height:48px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:28px; color:#fff; font-weight:900; flex-shrink:0; }
+  .status-icon.approved { background:#16a34a; }
+  .status-icon.rejected { background:#dc2626; }
+  .status-text h2 { font-size:18px; font-weight:800; }
+  .status-text h2.approved { color:#15803d; }
+  .status-text h2.rejected { color:#b91c1c; }
+  .status-text p { font-size:12px; color:#64748b; margin-top:2px; }
+
+  /* Section */
+  .section { margin-bottom:24px; }
+  .section-title { font-size:10px; text-transform:uppercase; letter-spacing:2.5px; font-weight:800; color:#94a3b8; margin-bottom:14px; padding-bottom:8px; border-bottom:1px solid #f1f5f9; }
+
+  /* Info Grid */
+  .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:0; }
+  .info-row { display:flex; justify-content:space-between; align-items:center; padding:11px 16px; border-bottom:1px solid #f1f5f9; }
+  .info-row:nth-child(odd) { background:#fafafa; }
+  .info-label { font-size:12px; font-weight:600; color:#64748b; }
+  .info-value { font-size:13px; font-weight:700; color:#0f172a; text-align:right; }
+
+  /* Full width rows */
+  .info-table { width:100%; border-collapse:collapse; }
+  .info-table tr:nth-child(odd) td { background:#fafafa; }
+  .info-table td { padding:11px 16px; border-bottom:1px solid #f1f5f9; font-size:12px; }
+  .info-table td:first-child { font-weight:600; color:#64748b; width:45%; }
+  .info-table td:last-child { font-weight:700; color:#0f172a; text-align:right; }
+
+  /* Match Table */
+  .match-table { width:100%; border-collapse:collapse; }
+  .match-table td { padding:11px 16px; border-bottom:1px solid #f1f5f9; font-size:12px; }
+  .match-table tr:nth-child(odd) td { background:#fafafa; }
+  .match-table td:first-child { font-weight:600; color:#64748b; width:45%; }
+  .match-table td:last-child { text-align:right; }
+
+  /* Confidence Bar */
+  .confidence-bar { display:flex; align-items:center; gap:12px; padding:16px; background:#fafafa; border-radius:12px; margin-bottom:24px; border:1px solid #f1f5f9; }
+  .confidence-bar .bar-track { flex:1; height:10px; background:#e2e8f0; border-radius:99px; overflow:hidden; }
+  .confidence-bar .bar-fill { height:100%; border-radius:99px; transition:width 0.3s; }
+  .confidence-bar .bar-fill.high { background:linear-gradient(90deg,#22c55e,#16a34a); }
+  .confidence-bar .bar-fill.medium { background:linear-gradient(90deg,#f59e0b,#d97706); }
+  .confidence-bar .bar-fill.low { background:linear-gradient(90deg,#ef4444,#dc2626); }
+  .confidence-label { font-size:22px; font-weight:900; min-width:56px; text-align:right; }
+  .confidence-label.high { color:#16a34a; }
+  .confidence-label.medium { color:#d97706; }
+  .confidence-label.low { color:#dc2626; }
+
+  /* Rejection reasons */
+  .reason { display:flex; gap:12px; padding:12px 16px; margin-bottom:8px; background:#fef2f2; border-radius:10px; border:1px solid #fecaca; }
+  .reason-num { width:24px; height:24px; border-radius:8px; background:#dc2626; color:#fff; font-size:11px; font-weight:800; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .reason-text { font-size:12px; color:#7f1d1d; line-height:1.5; }
+
+  /* Footer */
+  .footer { margin-top:40px; padding-top:20px; border-top:2px solid #f1f5f9; display:flex; justify-content:space-between; align-items:flex-end; }
+  .footer-left p { font-size:10px; color:#94a3b8; line-height:1.8; }
+  .footer-right { text-align:right; }
+  .footer-right .powered { font-size:9px; color:#cbd5e1; text-transform:uppercase; letter-spacing:2px; font-weight:700; }
+
+  @media print {
+    body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .page { padding:32px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- Header -->
+  <div class="header">
+    <div class="logo-area">
+      <h1>AON</h1>
+      <p>Inspección Vehicular</p>
+    </div>
+    <div class="doc-info">
+      <div class="id">ID: ${shortId}</div>
+      <div class="date">${dateStr} — ${timeStr}</div>
+    </div>
+  </div>
+
+  <!-- Status -->
+  <div class="status-banner ${isApproved ? 'approved' : 'rejected'}">
+    <div class="status-icon ${isApproved ? 'approved' : 'rejected'}">${isApproved ? '✓' : '✗'}</div>
+    <div class="status-text">
+      <h2 class="${isApproved ? 'approved' : 'rejected'}">${isApproved ? 'Inspección Aprobada' : 'Inspección No Aprobada'}</h2>
+      <p>Procesado por IA en ${(result.latency_ms / 1000).toFixed(1)} segundos</p>
+    </div>
+  </div>
+
+  <!-- Confidence -->
+  <div class="confidence-bar">
+    <div style="font-size:11px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:1px;">Confianza IA</div>
+    <div class="bar-track">
+      <div class="bar-fill ${confidencePct >= 80 ? 'high' : confidencePct >= 50 ? 'medium' : 'low'}" style="width:${confidencePct}%"></div>
+    </div>
+    <div class="confidence-label ${confidencePct >= 80 ? 'high' : confidencePct >= 50 ? 'medium' : 'low'}">${confidencePct}%</div>
+  </div>
+
+  <!-- Vehicle Info -->
+  <div class="section">
+    <div class="section-title">Datos del Vehículo Declarado</div>
+    <table class="info-table">
+      <tr><td>Marca</td><td>${vehicle.make}</td></tr>
+      <tr><td>Modelo</td><td>${vehicle.model}</td></tr>
+      <tr><td>Color</td><td>${vehicle.color}</td></tr>
+      ${vehicle.plate ? `<tr><td>Placa</td><td>${vehicle.plate}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <!-- Detected by AI -->
+  <div class="section">
+    <div class="section-title">Vehículo Detectado por IA</div>
+    <table class="info-table">
+      <tr><td>Marca</td><td>${result.vehicle_detected.make}</td></tr>
+      <tr><td>Modelo</td><td>${result.vehicle_detected.model}</td></tr>
+      <tr><td>Color</td><td>${result.vehicle_detected.color}</td></tr>
+      <tr><td>Año estimado</td><td>${result.vehicle_detected.year_estimate}</td></tr>
+      <tr><td>Tipo de carrocería</td><td>${result.vehicle_detected.body_type}</td></tr>
+      ${result.odometer_reading ? `<tr><td>Odómetro</td><td>${result.odometer_reading}</td></tr>` : ''}
+      ${result.vin_extracted ? `<tr><td>VIN</td><td style="font-family:monospace">${result.vin_extracted}</td></tr>` : ''}
+    </table>
+  </div>
+
+  <!-- Match Verification -->
+  <div class="section">
+    <div class="section-title">Verificación de Coincidencia</div>
+    <table class="match-table">
+      <tr><td>Marca</td><td>${matchIcon(result.declared_data_match.make_match)}</td></tr>
+      <tr><td>Modelo</td><td>${matchIcon(result.declared_data_match.model_match)}</td></tr>
+      <tr><td>Color</td><td>${matchIcon(result.declared_data_match.color_match)}</td></tr>
+    </table>
+  </div>
+
+  ${result.rejection_reasons.length > 0 ? `
+  <div class="section">
+    <div class="section-title">Motivos de Rechazo</div>
+    ${result.rejection_reasons.map((r, i) => `<div class="reason"><div class="reason-num">${i + 1}</div><div class="reason-text">${r}</div></div>`).join('')}
+  </div>
+  ` : ''}
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="footer-left">
+      <p>Documento generado automáticamente</p>
+      <p>ID completo: ${result.inspection_id}</p>
+      <p>${dateStr} — ${timeStr} hrs</p>
+    </div>
+    <div class="footer-right">
+      <div class="powered">Powered by Rocket Code</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>`;
+
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      setTimeout(() => printWindow.print(), 400);
+    }
+  }, [result, vehicle, isApproved]);
+
   return (
     <>
       <header className="bg-white sticky top-0 w-full z-50 border-b border-slate-100 shadow-sm">
@@ -937,7 +1130,7 @@ function ResultScreen({
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-3">
           {isApproved ? (
             <>
               <button
@@ -948,8 +1141,15 @@ function ResultScreen({
                 <span>Finalizar Inspección</span>
               </button>
               <button
+                onClick={generatePDF}
+                className="w-full py-4 border-2 border-zinc-200 rounded-2xl text-sm font-bold text-zinc-700 hover:bg-zinc-50 transition-all flex items-center justify-center gap-3"
+              >
+                <span className="material-symbols-outlined text-xl text-zinc-500">picture_as_pdf</span>
+                <span>Descargar Comprobante</span>
+              </button>
+              <button
                 onClick={onNewInspection}
-                className="w-full py-4 text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:text-[var(--primary)] transition-colors flex items-center justify-center gap-2"
+                className="w-full py-3 text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:text-[var(--primary)] transition-colors flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">add</span>
                 <span>Realizar otra inspección</span>
@@ -961,8 +1161,12 @@ function ResultScreen({
                 <span className="material-symbols-outlined text-xl">refresh</span>
                 <span>Reintentar Inspección</span>
               </button>
-              <button className="w-full py-4 text-[var(--primary)] font-bold text-[11px] uppercase tracking-widest hover:bg-red-50 rounded-2xl transition-all">
-                Contactar soporte
+              <button
+                onClick={generatePDF}
+                className="w-full py-4 border-2 border-zinc-200 rounded-2xl text-sm font-bold text-zinc-700 hover:bg-zinc-50 transition-all flex items-center justify-center gap-3"
+              >
+                <span className="material-symbols-outlined text-xl text-zinc-500">picture_as_pdf</span>
+                <span>Descargar Comprobante</span>
               </button>
             </>
           )}
