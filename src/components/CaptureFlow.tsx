@@ -940,16 +940,19 @@ function ResultScreen({
         <div className="flex flex-col gap-4">
           {isApproved ? (
             <>
-              <button className="btn-primary w-full flex items-center justify-center gap-3">
-                <span>Continuar con la Emisión de Póliza</span>
-                <span className="material-symbols-outlined text-xl">arrow_forward</span>
+              <button
+                onClick={onNewInspection}
+                className="btn-primary w-full flex items-center justify-center gap-3"
+              >
+                <span className="material-symbols-outlined text-xl" style={{ fontVariationSettings: "'FILL' 1" }}>task_alt</span>
+                <span>Finalizar Inspección</span>
               </button>
               <button
                 onClick={onNewInspection}
-                className="w-full py-4 border-2 border-zinc-200 rounded-xl text-sm font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center gap-3"
+                className="w-full py-4 text-zinc-400 font-bold text-[11px] uppercase tracking-widest hover:text-[var(--primary)] transition-colors flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined text-xl">add_circle</span>
-                <span>Nueva Inspección</span>
+                <span className="material-symbols-outlined text-base">add</span>
+                <span>Realizar otra inspección</span>
               </button>
             </>
           ) : (
