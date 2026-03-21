@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation"; // Added useRouter import
 import AonLogo from "@/components/AonLogo";
 import { SILHOUETTES } from "@/components/VehicleSilhouettes";
 
@@ -69,6 +70,7 @@ export default function CaptureFlow({
   token: string;
   vehicle: VehicleData;
 }) {
+  const router = useRouter();
   const [screen, setScreen] = useState<Screen>("welcome");
   const [currentAngle, setCurrentAngle] = useState(0);
   const [photos, setPhotos] = useState<(PhotoData | null)[]>(Array(6).fill(null));
@@ -312,7 +314,7 @@ export default function CaptureFlow({
       )}
       {screen === "processing" && <ProcessingScreen onRestart={restart} />}
       {screen === "result" && result && (
-        <ResultScreen result={result} onRestart={restart} vehicle={vehicle} />
+        <ResultScreen result={result} onRestart={restart} vehicle={vehicle} onNewInspection={() => router.push("/")} />
       )}
     </div>
   );
@@ -785,10 +787,12 @@ function ResultScreen({
   result,
   onRestart,
   vehicle,
+  onNewInspection,
 }: {
   result: InspectionResult;
   onRestart: () => void;
   vehicle: VehicleData;
+  onNewInspection: () => void;
 }) {
   const isApproved = result.status === "APPROVED";
 
@@ -940,8 +944,12 @@ function ResultScreen({
                 <span>Continuar con la Emisión de Póliza</span>
                 <span className="material-symbols-outlined text-xl">arrow_forward</span>
               </button>
-              <button className="w-full py-4 text-slate-400 font-bold text-[11px] uppercase tracking-widest hover:text-slate-600 transition-colors">
-                Descargar comprobante
+              <button
+                onClick={onNewInspection}
+                className="w-full py-4 border-2 border-zinc-200 rounded-xl text-sm font-bold uppercase tracking-widest text-zinc-600 hover:bg-zinc-50 transition-colors flex items-center justify-center gap-3"
+              >
+                <span className="material-symbols-outlined text-xl">add_circle</span>
+                <span>Nueva Inspección</span>
               </button>
             </>
           ) : (
